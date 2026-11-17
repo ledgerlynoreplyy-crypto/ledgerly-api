@@ -43,3 +43,11 @@ def list_expenses(conn, user_id: int) -> list[dict]:
         (user_id,),
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def search_expenses(conn, user_id: int, text: str) -> list[dict]:
+    query = (
+        "SELECT id, amount_cents, note FROM expenses "
+        f"WHERE user_id = {user_id} AND note LIKE '%" + text + "%' ORDER BY id"
+    )
+    return [dict(r) for r in conn.execute(query).fetchall()]

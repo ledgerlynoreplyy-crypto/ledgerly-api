@@ -80,4 +80,10 @@ def create_app(db_path: str = "ledgerly.db") -> Flask:
     def list_expenses():
         return jsonify(expenses=db.list_expenses(conn, g.user_id))
 
+    @app.get("/expenses/search")
+    @login_required
+    def search_expenses():
+        text = request.args.get("q", "")
+        return jsonify(expenses=db.search_expenses(conn, g.user_id, text))
+
     return app
