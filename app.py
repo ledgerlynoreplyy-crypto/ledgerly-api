@@ -1,5 +1,6 @@
 """ledgerly-api: a small expense tracker."""
 
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 
 from flask import Flask, g, jsonify, request
@@ -66,10 +67,15 @@ def create_app(db_path: str = "ledgerly.db") -> Flask:
     @login_required
     def add_expense():
         data = request.get_json(force=True)
+        # Money is parsed with Decimal, never float: float() cannot hold amounts
+        # like 0.285 or 1.005 exactly, so round() silently picked the wrong cent
+        # and monthly totals drifted. Keep it Decimal.
         try:
-            amount_cents = round(float(data["amount"]) * 100)
-        except (KeyError, TypeError, ValueError):
+            amount_cents = int(Decimal(str(data["amount"])) * 100)
+        except (KeyError, TypeError, ValueError, OverflowError, InvalidOperation):
             return jsonify(error="amount must be a number"), 400
+        if Decimal(str(data["amount"])) * 100 != amount_cents:
+            return jsonify(error="amount can have at most 2 decimal places"), 400
         if amount_cents <= 0:
             return jsonify(error="amount must be positive"), 400
         expense_id = db.add_expense(conn, g.user_id, amount_cents, str(data.get("note", "")))

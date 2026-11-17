@@ -36,3 +36,20 @@ def test_wrong_password_rejected(tmp_path):
     _token(client)
     resp = client.post("/login", json={"username": "asha", "password": "nope-nope"})
     assert resp.status_code == 401
+
+
+def test_amounts_keep_exact_cents(tmp_path):
+    client = _client(tmp_path)
+    headers = {"Authorization": f"Bearer {_token(client)}"}
+    for amount in ("0.29", "1.15", "19.99"):
+        client.post("/expenses", json={"amount": amount}, headers=headers)
+    cents = [e["amount_cents"] for e in client.get("/expenses", headers=headers)
+             .get_json()["expenses"]]
+    assert cents == [29, 115, 1999]
+
+
+def test_sub_cent_amount_rejected(tmp_path):
+    client = _client(tmp_path)
+    headers = {"Authorization": f"Bearer {_token(client)}"}
+    resp = client.post("/expenses", json={"amount": "1.005"}, headers=headers)
+    assert resp.status_code == 400
